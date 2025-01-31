@@ -38,10 +38,10 @@ knowledge1 = And(
 # A says "We are the same kind." B says "We are of different kinds."
 knowledge2 = And(
     basic_rules((AKnight, AKnave), (BKnight, BKnave)),
-    Implication(AKnight, Or(And(AKnight, BKnight), And(AKnave, BKnave))),  # A是骑士，同种
-    Implication(AKnave, Not(Or(And(AKnight, BKnight), And(AKnave, BKnave)))),  # A说谎，不同种
-    Implication(BKnight, Not(Or(And(AKnight, BKnight), And(AKnave, BKnave)))),  # B是骑士，不同种
-    Implication(BKnave, Or(And(AKnight, BKnight), And(AKnave, BKnave)))  # B说谎，同种
+    Implication(AKnight, Or(And(AKnight, BKnight), And(AKnave, BKnave))),  
+    Implication(AKnave, Not(Or(And(AKnight, BKnight), And(AKnave, BKnave)))),  
+    Implication(BKnight, Not(Or(And(AKnight, BKnight), And(AKnave, BKnave)))),  
+    Implication(BKnave, Or(And(AKnight, BKnight), And(AKnave, BKnave)))  
 )
 
 # Puzzle 3
@@ -50,23 +50,13 @@ knowledge2 = And(
 # C says "A is a knight."
 knowledge3 = And(
     basic_rules((AKnight, AKnave), (BKnight, BKnave), (CKnight, CKnave)),
-    # B声称A说“我是Knave”，若B是骑士则A确实说过，否则没说过
-    Implication(BKnight, Or(
-        And(AKnight, AKnave),  # A是骑士但说自己是Knave（矛盾）
-        And(AKnave, AKnave)    # A是Knave并说自己是Knave（矛盾）
-    )),  # 该条件不可能，故B只能是Knave
-    Implication(BKnave, Not(Or(And(AKnight, AKnave), And(AKnave, AKnave)))),  # A没说过“我是Knave”
-    # B声称C是Knave
+    Implication(BKnight, Or(And(AKnight, AKnave),  And(AKnave, AKnave))), 
+    Implication(BKnave, Not(Or(And(AKnight, AKnave), And(AKnave, AKnave)))),
     Implication(BKnight, CKnave),
     Implication(BKnave, Not(CKnave)),
-    # C说A是骑士
     Implication(CKnight, AKnight),
     Implication(CKnave, Not(AKnight)),
-    # A的陈述只能是“我是骑士”或“我是Knave”中的一个，并符合身份
-    Or(
-        And(AKnight, AKnight),  # 说“我是骑士”（真）
-        And(AKnave, AKnight)    # 说“我是骑士”（假）
-    )
+    Or(And(AKnight, AKnight), And(AKnave, AKnight))
 )
 
 '''

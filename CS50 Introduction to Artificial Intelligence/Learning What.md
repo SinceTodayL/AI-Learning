@@ -82,3 +82,104 @@ $$
 感觉怪怪的，只能作为一种感性的理解，但是仔细想想，Condition 如果是一个已知的 evidence，其在计算时确实可以被当作一个常数，在某些较为简单的概率计算场景下，可以直接计算出每一种可能情况的 $joint$ $probability$ ，然后 $normalize$ ，就可以得到相应的条件概率分布，利用正比这一说法也很好理解，但是如果较为复杂，贝叶斯网络节点较多的时候，用这种方式理解恐怕有点不妥
 
 本题其实就是利用了这种想法，求每一种可能状态的 $joint$ $probability$ ，最后 $normalize$ ，就得到了在已有一些 evidence 的情况下对应的条件分布，还需进一步理解，实际上这应该也是贝叶斯问题的核心思想
+
+### Lecture: optimization
+
+hill-climbing 方法进行 ==local search== 的几种变体，为了增大得到 global optimization 的可能性，而不是被困在局部最优解中
+
+| Variant                       | Defination                                                   |
+| ----------------------------- | ------------------------------------------------------------ |
+| Steepest-ascent Hill Climbing | **选择价值最高的邻居**：在每一步中，算法会评估所有邻居的状态，并选择其中价值最高的一个作为下一步。这种方法确保每次移动都是朝着当前最优的方向，但可能会陷入局部最优解，因为它只关注当前的最优选择，而没有全局视野。 |
+| Stochastic Hill Climbing      | **从价值更高的邻居中随机选择**：与最陡上升法不同，这种方法不会总是选择最优的邻居，而是从所有比当前状态更好的邻居中随机选择一个。这种方法增加了搜索的多样性，有助于避免陷入局部最优解，但可能会降低收敛速度。 |
+| First-choice Hill Climbing    | **选择第一个价值更高的邻居**：当邻居数量非常多或计算每个邻居的成本较高时，这种方法会随机检查邻居，并选择第一个比当前状态更好的邻居。它不需要评估所有邻居，因此在某些情况下更高效，但可能会错过更好的解。 |
+| Random-restart Hill Climbing  | **多次进行爬山法**：这种方法通过从不同的随机初始状态多次运行爬山法来增加找到全局最优解的概率。每次重启都从新的随机点开始，避免了单次运行陷入局部最优的问题。虽然计算成本较高，但能显著提高找到更好解的机会。 |
+| Local Beam Search             | **选择价值最高的n个邻居**：与传统的爬山法不同，局部束搜索同时跟踪多个状态（称为“束”）。在每一步中，它会从所有邻居中选择价值最高的n个状态继续搜索。这种方法结合了爬山法和束搜索的优点，能够在多个路径上进行搜索，增加找到全局最优解的可能性。 |
+
+#### simulated annealing  (for local search)
+
+**先大胆探索，后精细调整**，允许部分movement使得状态更差，从全局来看，这减少了完全陷入局部最优解的可能性
+
+经典的旅行商问题便可基于模拟退火算法解决，Python代码如下：
+
+```python
+# 随机生成城市坐标
+def generate_cities(n_cities):
+    cities = []
+    for _ in range(n_cities):
+        x = random.uniform(0, 100)
+        y = random.uniform(0, 100)
+        cities.append((x, y))
+    return cities
+
+# 计算路径总长度
+def path_distance(path):
+    distance = 0
+    for i in range(len(path)):
+        x1, y1 = cities[path[i]]
+        x2, y2 = cities[path[(i+1)%len(path)]]
+        distance += math.sqrt((x2-x1)**2 + (y2-y1)**2)
+    return distance
+
+# 生成邻域解（交换两个城市）
+def get_neighbor(path):
+    new_path = path.copy()
+    i = random.randint(0, len(path)-1)
+    j = random.randint(0, len(path)-1)
+    new_path[i], new_path[j] = new_path[j], new_path[i]
+    return new_path
+
+# 模拟退火算法
+def simulated_annealing(cities, T=10000, T_min=1e-3, alpha=0.99, max_iter=1000):
+    current_path = list(range(len(cities)))
+    random.shuffle(current_path)
+    current_cost = path_distance(current_path)
+    
+    best_path = current_path.copy()
+    best_cost = current_cost
+    
+    costs = [current_cost]
+    temperatures = [T]
+    
+    while T > T_min:
+        for _ in range(max_iter):
+            new_path = get_neighbor(current_path)
+            new_cost = path_distance(new_path)
+            delta = new_cost - current_cost
+            
+            if delta < 0 or random.random() < math.exp(-delta / T):
+                current_path = new_path
+                current_cost = new_cost
+                
+                if current_cost < best_cost:
+                    best_path = current_path.copy()
+                    best_cost = current_cost
+        
+        costs.append(current_cost)
+        temperatures.append(T)
+        T *= alpha
+    
+    return best_path, best_cost, costs, temperatures
+```
+
+其可视化结果如下：
+
+![SimulatedAnnealing](../image/SimulatedAnnealing.png)
+
+#### linear programming
+
+#### constraint satisfaction (graph)
+
+###  Project: crossword
+
+虽然这是 optimization lecture 对应的作业，但是其思想还是偏向搜索，主要思路如下：
+
+首先是一元约束，或者说 $node$ $consistency$，在本项目中初始状态下，由于 crossword 中每一个空格块对应的 domain 都是全体单词，然而空格块长度必须要和单词长度一致，这就可以将很多单词从domain中删除，保证每一个节点本身是满足条件的
+
+然后就是二元约束，或者说是弧约束，利用 $ac3$ 算法，其基本思想在于：对于给定的两个相互联系的变量 $x, y$（在本题中，即相邻的两个空格块，可用 `self.neighbors(x)` 访问），遍历 $x$ 的domain，如果domain有某个值，使得 $y$ 的domain中没有一个是符合条件的，则这个值将被移除；算法中用到 `deque` 来存储未被弧约束的变量对
+
+上述两种约束可以大大减少后续进行搜索时不必要的遍历
+
+最后就是核心步骤：搜索，和 $DFS$  很像，全程传递 $Assignment$ 变量，探索所有可能性，如果遇到不可能的就立即回溯；在遍历时也有一个优先级：总是先遍历约束少的；其实最先遍历的由 $Constait Graph$ 中节点的度排序后决定
+
+
+

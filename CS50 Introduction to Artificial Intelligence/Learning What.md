@@ -179,7 +179,9 @@ def simulated_annealing(cities, T=10000, T_min=1e-3, alpha=0.99, max_iter=1000):
 
 上述两种约束可以大大减少后续进行搜索时不必要的遍历
 
-最后就是核心步骤：搜索，和 $DFS$  很像，全程传递 $Assignment$ 变量，探索所有可能性，如果遇到不可能的就立即回溯；在遍历时也有一个优先级：总是先遍历约束少的；其实最先遍历的由 $Constait Graph$ 中节点的度排序后决定
+最后就是核心步骤：搜索，和 $DFS$  很像，全程传递 $Assignment$ 变量，探索所有可能性，如果遇到不可能的就立即回溯；在遍历时也有一个优先级：总是先遍历约束少的；其中最先遍历的state由 $Constrait Graph$ 中节点的度排序后决定
 
+### Lecture: Learning
 
+lecture 一开始先讲述了 $supervised$ $learning$ 中的 $KNN$ $(k-nearest-neighbors$ $classification)$ ，算法的核心思想就是在现有已经被标签的数据集中，找到 k 个最近邻的点，利用**投票机制**预测该数据点的标签，其优点很明显，易于理解并且适应于各种分类问题，但是缺点也非常突出，首先算法的计算开销很大，对每个点进行预测的时候都要计算与样本中所有点的距离，再进行排序；其次，该算法对于异常值 $(outliers)$ 和随机噪声 $(random noise)$ 非常敏感，对较高维度的数据集表现也会很差
 

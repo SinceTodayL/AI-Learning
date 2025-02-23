@@ -79,3 +79,49 @@ plt.title("Confusion Matrix")
 plt.show()
 ```
 
+
+
+### KFold function
+
+```python
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+```
+
+k折交叉验证的函数，shuffle设置为True，代表数据在分组的时候会打乱一遍，反之则按照顺序选取
+
+和训练模型一样，这个 kf 相当于一个生成器，具体使用还要 `kf.split(X)`，返回的也是索引，而不是数据本身
+
+enumerate 在python中可以同时返回一个可迭代对象的索引和内容，结合 kf 使用如下：
+
+```python
+# 创建 K 折交叉验证
+kf = KFold(n_splits=n_splits, shuffle=True, random_state=42)
+
+for fold_idx, (train_idx, test_idx) in enumerate(kf.split(X)):
+    X_train, X_test = X[train_idx], X[test_idx]
+    y_train, y_test = y[train_idx], y[test_idx]
+```
+
+
+
+### np.where(condition, x, y)
+
+这是 numpy 提供的一个条件判断函数，主要用于对数组中的元素进行选择性替换，如果condition为True，则替换为 x，否则替换为 y
+
+
+
+### fit, predict  method
+
+```python
+	# using smote
+    smote = SMOTE(random_state=41)
+    X_train_res, y_train_res = smote.fit_resample(X_train_scaled, y_train_layer1)
+
+    # train desicion tree model 
+    model_layer1 = DecisionTreeClassifier(random_state=41, max_depth=10)  # 确定模型参数
+    model_layer1.fit(X_train_res, y_train_res)                            # 传入训练集，训练模型          
+    # predict
+    y_pred_layer1 = model_layer1.predict(X_test_scaled)                   # 使用模型
+```
+
+对于训练的每一个模型，几乎都有同样的步骤，先确定参数 `model_layer1 = DecisionTreeClassifier(random_state=41, max_depth=10)`，然后传入训练集（如果需要训练的话就传，某些不需要训练，如 SMOTE，可以直接使用），最后再用 predict 的方法对测试集使用

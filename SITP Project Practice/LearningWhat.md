@@ -125,3 +125,6 @@ for fold_idx, (train_idx, test_idx) in enumerate(kf.split(X)):
 ```
 
 对于训练的每一个模型，几乎都有同样的步骤，先确定参数 `model_layer1 = DecisionTreeClassifier(random_state=41, max_depth=10)`，然后传入训练集（如果需要训练的话就传，某些不需要训练，如 SMOTE，可以直接使用），最后再用 predict 的方法对测试集使用
+
+
+

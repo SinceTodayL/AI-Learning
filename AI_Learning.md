@@ -50,6 +50,37 @@ x = x.reshape(B, -1)  # (32, 64, 7, 7) -> (32, 64*7*7)
 
 
 
+`np.ploy` 系列有很多关于多项式的函数
+
+```python
+p = np.ploy1d([2, 6, 3])
+p(1)
+>> 11
+p.r  # 多项式的根
+>> array([-0.5, -3])
+np.ployval([2, 1, 3], 2)  # 计算多项式的值
+>> 13
+coeff = [3.2, 2, 1]
+np.roots(coeff)
+>> array([-0.3125+0.46351241j, -0.3125-0.46351241j])
+```
+
+还有拟合系列
+
+```python
+coef = np.polyfit(x, y_change, 6)
+p = np.poly1d(coef)  # coef 得到的是一个系数的数组，代表拟合结果
+```
+
+同样，np还有很多数值计算的方法，如计算协方差
+
+```python
+cov_mat = np.cov(y_indexinfo_change, y_change)  # 直接返回协方差矩阵
+cov_two = cov_mat[0][1]
+```
+
+
+
 
 
 
@@ -79,6 +110,63 @@ x = x.reshape(B, -1)  # (32, 64, 7, 7) -> (32, 64*7*7)
 20250419
 
 多层神经网络中，如果变换全部都是线性的，那么和单独一层变换其实没有本质区别，只有在其中添加激活函数，引入非线性，才能提高神经网络的表达能力
+
+
+
+20250511
+
+学习Python的函数的时候，和C++是不一样的，C++的很多语法规则固定且很少，因此有些需要掌握全面，但是Python非常灵活，记函数大可不必，但是要知道函数是用来做什么的，==需要哪些参数==，这个很重要
+
+torch 框架训练过程经典代码：
+
+```python
+    n_epoches = 10
+    losses = []
+    for epoch in range(n_epoches):
+        loss_all = 0
+        for i, (images, labels) in enumerate(train_loader):
+            # 1. to(device)
+            images = images.to(device)
+            labels = labels.to(device)
+            # 2. zero_grad
+            optimizer.zero_grad()
+            # 3. train(core)
+            output = model(images)
+
+            loss = criterion(output, labels)
+            loss_all += loss.item()
+
+            # 4. gradient back
+            loss.backward()
+            optimizer.step()  # CORE!!  Update parameters
+            if i % 100 == 99:
+                print(f"Epoch {epoch + 1}, Batch {i + 1}, Loss : {loss_all:.4f}")
+        losses.append(loss_all)
+        loss_all = 0
+```
+
+测试过程经典代码：
+
+```python
+    model.eval()
+    correct = 0
+    total = 0
+    
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            output = model(images)
+            _, predict = torch.max(output, 1)            
+            # torch.max() 返回两个值: 最大值和其索引，这里我们仅关心索引；参数中，1代表沿着第二个维度寻找最大值
+            # output 的格式：(batch_size, class_nums), 在第二个维度寻找最大值找出预测结果类
+            correct += (predict == labels).sum().item()	 
+            # (predict == labels) 中，predict 和 labels 都是数组，但是该表达式返回了一个布尔张量，.sum() 方法求和，然后 .item() 方法得到值的大小·
+            # predict 和 labels 都是 torch张量
+            total += labels.size(0)
+```
+
+
 
 
 
@@ -462,3 +550,6 @@ $$
 思考：为什么transformer这类模型不用 BN 而是 LN？
 
 transformer的输入单位是tokens，如果利用 BN 做batch之间的norm，会干扰每一个tokens的信息语义以及位置信息
+
+
+

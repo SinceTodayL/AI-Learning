@@ -163,7 +163,7 @@ def simulated_annealing(cities, T=10000, T_min=1e-3, alpha=0.99, max_iter=1000):
 
 其可视化结果如下：
 
-![SimulatedAnnealing](../image/SimulatedAnnealing.png)
+![SimulatedAnnealing](../images/SimulatedAnnealing.png)
 
 #### linear programming
 
@@ -205,7 +205,7 @@ $$
 
 间隔越大说明模型的泛化性能更好
 
-![SVM](../image/SVM.png)
+![SVM](../images/SVM.png)
 
 #### Loss Function
 

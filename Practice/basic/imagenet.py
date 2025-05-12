@@ -76,10 +76,13 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             # 3. train(core)
             output = model(images)
+
             loss = criterion(output, labels)
             loss_all += loss.item()
+
+            # 4. gradient back
             loss.backward()
-            optimizer.step()
+            optimizer.step()  # CORE!!  Update parameters
             if i % 100 == 99:
                 print(f"Epoch {epoch + 1}, Batch {i + 1}, Loss : {loss_all:.4f}")
         losses.append(loss_all)

@@ -22,7 +22,7 @@ print(a_random, b_random, c_random, d_random)
 f = [1, 10, 100, 1000]
 p = [0.1, 0.2, 0.3, 0.4]
 record = []
-for i in range(1000000):
+for i in range(100000):
     record.append(np.random.choice(f, p=p))
 print(record.count(1), record.count(10), record.count(100), record.count(1000))
 

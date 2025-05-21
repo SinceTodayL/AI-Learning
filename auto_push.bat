@@ -16,7 +16,7 @@ if errorlevel 1 (
     for /f %%i in ('powershell -command "Get-Date -Format \"yyyyMMdd\""') do set timestamp=%%i
 
     :: Commit with timestamp
-    git commit -m "commit at !timestamp!"
+    git commit -m "update at !timestamp!"
     
     :: Push to main branch
     git push origin main

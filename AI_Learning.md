@@ -81,6 +81,19 @@ cov_two = cov_mat[0][1]
 
 
 
+```bash
+conda info
+```
+
+一行指令可以展现当前虚拟环境信息
+
+```bash
+conda info --envs
+conda activate normal # 激活 normal 虚拟环境
+```
+
+展示当前虚拟环境列表
+
 
 
 
@@ -194,6 +207,14 @@ KL 散度（Kullback-Leibler Divergence）是衡量两个概率分布之间差�
 4. 实现训练模式和评估模式的切换
 5. 自动调用 forward 方法
 6. 设备管理，`.to(device)`，可以切换至 GPU 或 CPU
+
+
+
+20250522
+
+简单读了几篇关于文字生成、古籍文字识别的文章，基于GAN的改进，或者通过捕捉文字局部特征进行识别、或者进行图像的检索
+
+
 
 
 

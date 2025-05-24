@@ -24,3 +24,4 @@ if errorlevel 1 (
 ) else (
     echo [–] No changes detected. Nothing to commit.
 )
+pause()

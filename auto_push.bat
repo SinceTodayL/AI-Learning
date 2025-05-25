@@ -18,10 +18,10 @@ if errorlevel 1 (
     :: Commit with timestamp
     git commit -m "update at !timestamp!"
     
-    :: Push to main branch
-    git push origin main
     echo [✓] Changes detected. Committed and pushed to main at !timestamp!.
 ) else (
     echo [–] No changes detected. Nothing to commit.
 )
+:: Push to main branch
+git push origin main
 pause()

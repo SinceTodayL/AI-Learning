@@ -162,8 +162,8 @@ def draw_loss():
 def main():
     parser = argparse.ArgumentParser(description="PyTorch CIFAR‑10 VAE")
     parser.add_argument("--batch-size", type=int, default=128)
-    parser.add_argument("--epochs", type=int, default=500)
-    parser.add_argument("--latent-dim", type=int, default=128)
+    parser.add_argument("--epochs", type=int, default=200)
+    parser.add_argument("--latent-dim", type=int, default=256)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--log-interval", type=int, default=100)
     parser.add_argument("--no-cuda", action="store_true", default=False)

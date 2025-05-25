@@ -216,6 +216,26 @@ KL 散度（Kullback-Leibler Divergence）是衡量两个概率分布之间差�
 
 
 
+20250525
+
+下图描述了如 Stable Diffusion、DALL-E、Imagen 等图像生成模型的固有组件
+
+![image-20250525204419078](./images/image-20250525204419078.png)
+
+首先是一个针对文本的 Encoder，将文本转换为机器可理解的向量语言；然后是一个 Generation Model，从向量语言中提取图像特征，生成的有可能是一个 latent vector，也有可能是一个压缩后的图像；最后是一个 Decoder，从上一个模型中得到的图像特征数据，还原为一个完整的图像。
+
+第一步用的模型如 Transformer 等，转换文本为数据
+
+第二步可以用 Diffusion，VAE 等，其中如果是 Diffusion，这个时候的噪音施加在 latent vector 上的
+
+![image-20250525205753664](./images/image-20250525205753664.png)
+
+第三步的 Decoder，训练数据可以是任何图片，不需要是一个带标签的图片
+
+![image-20250525205051543](./images/image-20250525205051543.png)
+
+
+
 
 
 

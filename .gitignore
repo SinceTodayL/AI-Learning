@@ -3,3 +3,4 @@
 /data/
 *.gitignore
 *.bat
+**/stable-diffusion-3-medium-diffusers/

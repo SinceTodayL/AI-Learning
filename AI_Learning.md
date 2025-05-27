@@ -246,6 +246,69 @@ VAE 和 Diffusion 的区别
 
 
 
+20250527
+
+>[!NOTE]
+
+一些感悟，
+
+我在学 diffusion model 和 VAE 的时候，被一大堆条件概率搞的很晕，但实际上，想想发现，在 torch 框架的加持下，模型的训练具有分明的**模块化**特征，我们只需要搞懂下面几个模块：
+
+1. Loss Function (Objective Function)
+
+这个决定了函数最后梯度的计算，具有可导性
+
+2. `def forward(self, x)` 函数
+
+在 `nn.Module` 继承的类中，这个函数相当重要，决定了模型的运行流程，同时一定要保证模型在前向传播的时候一定要**可导**，这其中还包括：数据的来源？传播过程中的格式以及一些小 Tricks
+
+3. 可视化
+
+这部分代码就有灵活性了，具体情况具体看待
+
+然后模型就可以跑起来了！
+
+比如 VAE 和 Diffusion model 实际上真正推导的是什么？是怎么样让目标函数可计算！
+
+
+
+StableDiffusion3 模型生图过程：
+
+>组件：
+>
+>1. VAE Encoder：用于将图像压缩到 latent space，但这个模块只需要训练的时候用，因为训练的时候，是图像和prompt一起输入，但是推理的时候一般不用这个模块
+>2. CLIP(Transformer)：理解prompt文本的关键
+>
+>3. U-Net：去噪过程，输入随机采样的噪声，输出去噪后的结果
+>4. VAE Decoder：相对简单的模块，反卷积还原图片即可
+
+过程：
+
+推理生成的时候，将Text输入给CLIP模块，利用Cross Attention模块理解文本，同时将文本描述转化为向量描述；然后在高斯分布空间中随机取样（和上一步所得到的向量无关），然后对这个随机取样的结果进行去噪，显然，这个随机取样的结果和输出不是一一对应的关系，仍然需要Cross Attention的模块处理文本，同时采用了”多尺度特征融合技术“和”残差结构(预测噪声残差)“，最后的得到了一个图像的latent representation，然后经过Decoder还原
+
+训练的时候，由于需要将文本数据和图像数据成对输入，因此需要Encoder的参与，将图像数据进行压缩和向量化，其余过程同理
+
+>==Maximum Likelihood Estimation==
+
+Core Formula：
+$$
+\theta^* =\ \arg\max_{\theta} \sum_{i=1}^{m} \log P_{\theta}(x^{(i)}) \ =  \arg\max_{\theta} \mathbb{E}_{x_0 \sim q(x_0)} [\log p_{\theta}(x_0)]
+\\
+= \arg\max_{\theta} \int_x P_{\text{data}}(x) \log P_\theta(x) \, dx 
+- \int_x P_{\text{data}}(x) \log P_{\text{data}}(x) \, dx \\
+= \arg\max_{\theta} \int_x P_{\text{data}}(x) \log \frac{P_\theta(x)}{P_{\text{data}}(x)} \, dx 
+= \arg\min_{\theta} \mathrm{KL}(P_{\text{data}} \| P_\theta)
+$$
+我们希望训练一个生成模型，使得其对生成真实数据的概率最大，由上面的推导，等价于最小化二者的 KL 散度
+
+实际上解释了 KL 散度概念的由来，是基于 最大似然 的
+$$
+\log P_{\theta}(x)=\int_{z}q(z|x)*\log P(x) dz
+$$
+
+
+
+
 
 
 ### Adam (paper: Adam: A Method For Stochastic Optimization)
@@ -660,3 +723,12 @@ $$
 
 ​	上面的过程简单描述了这个算法过程，首先，我们同时取 m 个随机噪声样本，和m个真实样本，然后通过随机下降梯度（目标函数见上图）更新判别器D的参数，这个过程执行k次；然后，我们选取m个随机噪声样本，更新G的参数（目标函数和之前的不一样，见上图），直到收敛
 
+
+
+### PostMaker (Paper: PosterMaker: Towards High-Quality Product Poster Generation with Accurate Text Rendering)
+
+结合 sd3，提出来一个模型能够准确生成海报，包含元素：海报上的汉字，背景，和物体
+
+在过去的图片生成技术，以及 Text To Image Model 中，生成准确的汉字是一件很难的事情，哪怕是 Sora 这种知名模型，生成中文有时也会乱码；同时，海报生成中，如何让文字和图片中的物体保持和谐搭配，consistency，也是待解决的事情
+
+文中在 sd3 的基础上，提出了 ==TextRenderNet, SceneGenNet== 两个网络

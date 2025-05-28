@@ -306,6 +306,13 @@ $$
 \log P_{\theta}(x)=\int_{z}q(z|x)*\log P(x) dz
 $$
 
+>[!NOTE]
+>
+>==实际上，VAE 和 Diffusion Model 中间都是在训练一个高斯分布的参数！这个是一个理解上的鸿沟==
+
+<img src="./images/image-20250527222341942.png" alt="image-20250527222341942" style="zoom:50%;" />
+
+  不在像素空间直接做扩散，而是在 **VAE 编码的 latent 空间** 中进行，从而降低运算量。
 
 
 
@@ -732,3 +739,7 @@ $$
 在过去的图片生成技术，以及 Text To Image Model 中，生成准确的汉字是一件很难的事情，哪怕是 Sora 这种知名模型，生成中文有时也会乱码；同时，海报生成中，如何让文字和图片中的物体保持和谐搭配，consistency，也是待解决的事情
 
 文中在 sd3 的基础上，提出了 ==TextRenderNet, SceneGenNet== 两个网络
+
+
+
+### ControlNet (Paper: Adding Conditional Control to Text-to-Image Diffusion Models)

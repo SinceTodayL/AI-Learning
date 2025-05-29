@@ -70,10 +70,9 @@ def draw_loss():
     plt.show()
 
 
-# --------------------------
-# Main entry point
-# --------------------------
-
+"""
+    main
+"""
 def main():
     parser = argparse.ArgumentParser(description="PyTorch CIFAR‑10 VAE")
     parser.add_argument("--batch-size", type=int, default=128)

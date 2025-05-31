@@ -3,7 +3,6 @@ import json
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 import os
-import datetime
 
 import cv2
 import torch
@@ -76,26 +75,11 @@ class ImageGenerator:
         # 初始化模型和管道
         self.initialize_models()
         
-        # 显示内存使用情况
-        if torch.cuda.is_available():
-            self.print_memory_usage()
-        
-    def print_memory_usage(self):
-        if torch.cuda.is_available():
-            allocated = torch.cuda.memory_allocated() / 1024**3  # GB
-            reserved = torch.cuda.memory_reserved() / 1024**3   # GB
-            total = torch.cuda.get_device_properties(0).total_memory / 1024**3  # GB
-            print(f"CUDA内存使用状态:")
-            print(f"  已分配: {allocated:.2f} GB")
-            print(f"  已预留: {reserved:.2f} GB") 
-            print(f"  总容量: {total:.2f} GB")
-            print(f"  可用: {total - reserved:.2f} GB\n")
-        
     def initialize_models(self):
-        # 加载所有必要的模型组件和管道
+        # 这里加载所有必要的模型和组件
         args = self.get_default_args()
         
-        # 加载文本编码器
+        # load text encoders
         text_encoder_cls_one = import_model_class_from_model_name_or_path(
             args.pretrained_model_name_or_path, args.revision
         )
@@ -108,7 +92,7 @@ class ImageGenerator:
         text_encoder_one, text_encoder_two, text_encoder_three = load_text_encoders(
             args, text_encoder_cls_one, text_encoder_cls_two, text_encoder_cls_three
         ) 
-        # 加载分词器
+        # Load tokenizers
         tokenizer_one = transformers.CLIPTokenizer.from_pretrained(
             args.pretrained_model_name_or_path,
             subfolder="tokenizer",
@@ -125,11 +109,11 @@ class ImageGenerator:
             revision=args.revision,
         )
 
-        # 加载VAE模型
+        # load vae
         vae = load_vae(args)
-        # 加载SD3 Transformer模型
+        # load sd3
         transformer = load_transfomer(args)
-        # 加载调度器
+        # load scheduler
         noise_scheduler = FlowMatchEulerDiscreteScheduler.from_pretrained(
             args.pretrained_model_name_or_path, subfolder="scheduler"
         )
@@ -145,21 +129,20 @@ class ImageGenerator:
         controlnet_text.load_state_dict(textrender_net_state_dict['controlnet_text'])
         adapter.load_state_dict(textrender_net_state_dict['adapter'])
 
-        # 设置设备和数据类型
+        # set device and dtype
         weight_dtype = (torch.float16 if torch.cuda.is_available() else torch.float32)
         device = self.device
 
-        # 将所有模型迁移至目标设备并设置精度
-        vae = vae.to(device=device, dtype=weight_dtype)
-        transformer = transformer.to(device=device, dtype=weight_dtype)
-        text_encoder_one = text_encoder_one.to(device=device, dtype=weight_dtype)
-        text_encoder_two = text_encoder_two.to(device=device, dtype=weight_dtype)
-        text_encoder_three = text_encoder_three.to(device=device, dtype=weight_dtype)
-        controlnet_inpaint = controlnet_inpaint.to(device=device, dtype=weight_dtype)
-        controlnet_text = controlnet_text.to(device=device, dtype=weight_dtype)
-        adapter = adapter.to(device=device, dtype=weight_dtype)
+        # move all models to device
+        vae.to(device=device)
+        text_encoder_one.to(device=device, dtype=weight_dtype)
+        text_encoder_two.to(device=device, dtype=weight_dtype)
+        text_encoder_three.to(device=device, dtype=weight_dtype)
+        controlnet_inpaint.to(device=device, dtype=weight_dtype)
+        controlnet_text.to(device=device, dtype=weight_dtype)
+        adapter.to(device=device, dtype=weight_dtype)
 
-        # 加载推理管道
+        # load pipeline
         pipeline = StableDiffusion3ControlNetPipeline(
             scheduler=FlowMatchEulerDiscreteScheduler.from_config(
                 noise_scheduler.config
@@ -178,134 +161,16 @@ class ImageGenerator:
         )
 
         self.pipeline = pipeline.to(dtype=weight_dtype, device=device)
-
-        # 启用CUDA内存优化技术
-        if torch.cuda.is_available():
-            print(f"GPU总内存: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
-            
-            optimizations_enabled = []
-            
-            # 尝试启用注意力切片
-            try:
-                if hasattr(self.pipeline, 'enable_attention_slicing'):
-                    self.pipeline.enable_attention_slicing(1)
-                    optimizations_enabled.append("注意力切片")
-            except Exception as e:
-                print(f"无法启用注意力切片: {e}")
-            
-            # 尝试启用VAE切片
-            try:
-                if hasattr(self.pipeline, 'enable_vae_slicing'):
-                    self.pipeline.enable_vae_slicing()
-                    optimizations_enabled.append("VAE切片")
-            except Exception as e:
-                print(f"无法启用VAE切片: {e}")
-            
-            # 尝试启用序列CPU卸载以实现最大内存节省
-            try:
-                if hasattr(self.pipeline, 'enable_sequential_cpu_offload'):
-                    self.pipeline.enable_sequential_cpu_offload()
-                    optimizations_enabled.append("序列CPU卸载")
-                elif hasattr(self.pipeline, 'enable_model_cpu_offload'):
-                    self.pipeline.enable_model_cpu_offload()
-                    optimizations_enabled.append("模型CPU卸载")
-            except Exception as e:
-                print(f"无法启用CPU卸载: {e}")
-            
-            # 手动VAE优化（适用于自定义管道）
-            try:
-                if hasattr(self.pipeline, 'vae') and hasattr(self.pipeline.vae, 'enable_slicing'):
-                    self.pipeline.vae.enable_slicing()
-                    optimizations_enabled.append("手动VAE切片")
-            except Exception as e:
-                print(f"无法启用手动VAE切片: {e}")
-            
-            # 手动注意力优化
-            try:
-                if hasattr(self.pipeline, 'transformer'):
-                    # 启用梯度检查点（如果可用）
-                    if hasattr(self.pipeline.transformer, 'enable_gradient_checkpointing'):
-                        self.pipeline.transformer.enable_gradient_checkpointing()
-                        optimizations_enabled.append("梯度检查点")
-                    
-                    # 启用前向分块以提高内存效率
-                    if hasattr(self.pipeline.transformer, 'enable_forward_chunking'):
-                        self.pipeline.transformer.enable_forward_chunking(chunk_size=1)
-                        optimizations_enabled.append("前向分块")
-            except Exception as e:
-                print(f"无法启用梯度检查点: {e}")
-            
-            # 为ControlNet启用优化
-            try:
-                for controlnet_name in ['controlnet_inpaint', 'controlnet_text']:
-                    if hasattr(self.pipeline, controlnet_name):
-                        controlnet = getattr(self.pipeline, controlnet_name)
-                        
-                        # 为ControlNet启用梯度检查点
-                        if hasattr(controlnet, 'enable_gradient_checkpointing'):
-                            controlnet.enable_gradient_checkpointing()
-                            optimizations_enabled.append(f"{controlnet_name}梯度检查点")
-                        
-                        # 为ControlNet启用前向分块
-                        if hasattr(controlnet, 'enable_forward_chunking'):
-                            controlnet.enable_forward_chunking(chunk_size=1)
-                            optimizations_enabled.append(f"{controlnet_name}前向分块")
-            except Exception as e:
-                print(f"无法启用ControlNet优化: {e}")
-            
-            # 额外的内存节省技术
-            try:
-                # 设置内存高效注意力（如果可用）
-                if hasattr(self.pipeline.transformer, 'set_use_memory_efficient_attention_xformers'):
-                    self.pipeline.transformer.set_use_memory_efficient_attention_xformers(True)
-                    optimizations_enabled.append("xformers注意力")
-                    
-                # 为VAE启用瓦片化模式（如果可用）
-                if hasattr(self.pipeline.vae, 'enable_tiling'):
-                    self.pipeline.vae.enable_tiling()
-                    optimizations_enabled.append("VAE瓦片化")
-            except Exception as e:
-                print(f"无法启用额外优化: {e}")
-            
-            if optimizations_enabled:
-                print(f"已启用内存优化技术: {', '.join(optimizations_enabled)}")
-            else:
-                print("无法启用内存优化技术（自定义管道）\n")
-        
-        
-        # 输出模型精度配置信息
-        print("模型精度配置:")
-        print(f"VAE数据类型: {vae.dtype}")
-        print(f"Transformer数据类型: {transformer.dtype}")
-        print(f"文本编码器1数据类型: {text_encoder_one.dtype}")
-        print(f"文本编码器2数据类型: {text_encoder_two.dtype}")
-        print(f"文本编码器3数据类型: {text_encoder_three.dtype}")
-        print(f"ControlNet Inpaint数据类型: {controlnet_inpaint.dtype}")
-        print(f"ControlNet Text数据类型: {controlnet_text.dtype}")
-        print(f"适配器数据类型: {next(adapter.parameters()).dtype}")
-        print(f"管道数据类型: {self.pipeline.dtype}\n")
         
     def generate(self, main_image, mask_image, texts_str, prompt, seed_generator):
-        print("图像生成器启动")
         try:
-            print("清理GPU显存...")
-            # 清理显存并启用最大内存节省
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                torch.cuda.ipc_collect()  # 更彻底的内存清理
-            
-            print("转换输入图像格式...")
             # 将输入图像转换为numpy格式，RGB
             main_image = np.array(main_image)
             mask = cv2.cvtColor(np.array(mask_image), cv2.COLOR_BGR2GRAY)
-            print(f"主图像形状: {main_image.shape}, 掩码形状: {mask.shape}")
             
-            print("解析文本布局...")
             # 解析文本布局
             texts = json.loads(texts_str)
-            print(f"解析出{len(texts)}个文本元素")
             
-            print("预处理输入数据...")
             # 预处理输入数据
             input_data = self.data_processor(
                 image=main_image,
@@ -313,101 +178,31 @@ class ImageGenerator:
                 texts=texts,
                 prompt=prompt
             )
-            print(f"数据预处理完成，输入数据键: {list(input_data.keys())}")
             
-            # 执行推理前再次清理内存
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                print("推理前内存清理完成")
-            
-            # 执行推理 - 减少推理步数以节省显存
-            num_steps = 28 if torch.cuda.is_available() else 1  # 进一步减少推理步数
-            
-            # 使用与数据预处理一致的分辨率，避免张量尺寸不匹配
-            # data_processor默认使用(1024, 1024)，推理也应该使用相同分辨率
-            height, width = 1024, 1024  # 与data_processor的input_size保持一致
-            
-            print(f"使用一致的处理分辨率: {width}x{height}")
-            print(f"开始管道推理，步数: {num_steps}, 分辨率: {width}x{height}")
-            
+            # 执行推理
             results = self.pipeline(
                 prompt=prompt,
                 negative_prompt='deformed, distorted, disfigured, poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, mutated hands and fingers, disconnected limbs, mutation, mutated, ugly, disgusting, blurry, amputation, NSFW',
-                height=height,
-                width=width,
+                height=1024,
+                width=1024,
                 control_image=[input_data['cond_image_inpaint'], input_data['controlnet_im']],
                 control_mask=input_data['control_mask'],
                 text_embeds=input_data['text_embeds'],
-                num_inference_steps=num_steps,
+                num_inference_steps=(28 if torch.cuda.is_available() else 1),
                 generator=seed_generator,
                 controlnet_conditioning_scale=1.0,
                 guidance_scale=5.0,
                 num_images_per_prompt=1,
             ).images
             
-            print(f"管道推理完成，生成了{len(results)}张图像")
-            print(f"第一张图像类型: {type(results[0])}")
-            if hasattr(results[0], 'size'):
-                print(f"第一张图像尺寸: {results[0].size}")
-            
-            print("开始后处理...")
             # 后处理，根据im_h, im_w从rel中裁剪[0, 0, im_w, im_h]区域
             rel = post_process(results[0], input_data['target_size'])
-            print(f"后处理完成，最终图像类型: {type(rel)}")
-            if hasattr(rel, 'size'):
-                print(f"最终图像尺寸: {rel.size}")
             
-            # 保存生成的图像到results/images目录
-            try:
-                # 创建保存目录
-                save_dir = "results/images"
-                os.makedirs(save_dir, exist_ok=True)
-                
-                # 生成时间戳文件名
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"generated_{timestamp}.png"
-                filepath = os.path.join(save_dir, filename)
-                
-                # 保存图像
-                if isinstance(rel, Image.Image):
-                    rel.save(filepath)
-                elif isinstance(rel, np.ndarray):
-                    Image.fromarray(rel).save(filepath)
-                
-                print(f"图像已保存至: {filepath}")
-            except Exception as save_e:
-                print(f"保存图像时出错: {save_e}")
-            
-            # 清理显存
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                torch.cuda.ipc_collect()
-                print("最终显存清理完成")
-            
-            print("图像生成成功，返回结果")
             # 返回生成的图像
             return rel
             
-        except torch.cuda.OutOfMemoryError as e:
-            print(f"CUDA内存不足: {e}")
-            # 清理显存
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                torch.cuda.ipc_collect()
-            return "CUDA out of memory. Try reducing image size or restart the application."
         except Exception as e:
-            print(f"生成过程异常: {e}")
-            import traceback
-            print(f"详细错误信息: {traceback.format_exc()}")
-            # 清理显存
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                torch.cuda.ipc_collect()
-            # 截断错误消息以避免过长的文件名
-            error_msg = str(e)
-            if len(error_msg) > 100:
-                error_msg = error_msg[:100] + "..."
-            return f"Error in image generation: {error_msg}"
+            return f"Error in image generation: {str(e)}"
         
     def get_default_args(self):
         # 返回默认参数配置
@@ -550,116 +345,62 @@ def visualize_layout(main_image, mask_image, texts_str, prompt,
 generator = ImageGenerator()
 
 def generate_image(main_image, mask_image, texts_str, prompt, seed):
-    print("开始图像生成流程")
-    print(f"输入参数 - 主图像类型: {type(main_image)}, 掩码图像类型: {type(mask_image)}")
-    print(f"文本字符串长度: {len(texts_str) if texts_str else 0}, 提示词长度: {len(prompt) if prompt else 0}")
-    
     if main_image is None:
-        error_msg = "Error: Main image is required"
-        print(f"错误: {error_msg}")
-        return error_msg
+        return "Error: Main image is required"
 
     try:
-        print("开始处理主图像格式...")
         # 处理main_image的格式
         if isinstance(main_image, np.ndarray):
-            print(f"主图像为numpy数组，形状: {main_image.shape}")
             # 处理numpy array格式
             if main_image.ndim == 3:
                 if main_image.shape[2] == 4:  # RGBA格式
-                    print("检测到RGBA格式")
                     rgb_array = main_image[..., :3]
                     alpha_channel = main_image[..., 3]
                     main_image = Image.fromarray(rgb_array)
                     # 如果没有提供mask，使用alpha通道作为mask
                     if mask_image is None:
-                        print("从alpha通道创建掩码")
                         mask_array = (alpha_channel > 128).astype(np.uint8) * 255
                         mask_image = Image.fromarray(mask_array)
                 elif main_image.shape[2] == 3:  # RGB格式
-                    print("检测到RGB格式")
                     main_image = Image.fromarray(main_image)
                     if mask_image is None:
-                        error_msg = "Error: When using RGB image, a mask image must be provided"
-                        print(f"错误: {error_msg}")
-                        return error_msg
+                        return "Error: When using RGB image, a mask image must be provided"
                 else:
-                    error_msg = "Error: Invalid number of channels in main image"
-                    print(f"错误: {error_msg}")
-                    return error_msg
+                    return "Error: Invalid number of channels in main image"
             else:
-                error_msg = "Error: Invalid dimensions for main image"
-                print(f"错误: {error_msg}")
-                return error_msg
+                return "Error: Invalid dimensions for main image"
         elif isinstance(main_image, Image.Image):
-            print(f"主图像为PIL.Image，模式: {main_image.mode}，尺寸: {main_image.size}")
             # 处理PIL.Image格式
             if main_image.mode == 'RGBA':
-                print("转换RGBA到RGB")
                 rgb_image = main_image.convert('RGB')
                 alpha_channel = main_image.split()[3]
                 # 如果没有提供mask，使用alpha通道作为mask
                 if mask_image is None:
-                    print("从alpha通道创建掩码")
                     mask_image = alpha_channel.point(lambda x: 255 if x > 128 else 0)
                 main_image = rgb_image
             elif main_image.mode != 'RGB' and mask_image is None:
-                error_msg = "Error: When using RGB image, a mask image must be provided"
-                print(f"错误: {error_msg}")
-                return error_msg
+                return "Error: When using RGB image, a mask image must be provided"
         else:
-            error_msg = "Error: Main image must be numpy array or PIL.Image format"
-            print(f"错误: {error_msg}")
-            return error_msg
+            return "Error: Main image must be numpy array or PIL.Image format"
 
         # 确保main_image是RGB模式
         if isinstance(main_image, Image.Image) and main_image.mode != 'RGB':
-            print("转换图像到RGB模式")
             main_image = main_image.convert('RGB')
 
         # 处理mask_image的格式
         if mask_image is not None:
-            print(f"处理掩码图像，类型: {type(mask_image)}")
             if isinstance(mask_image, np.ndarray):
-                print(f"掩码图像为numpy数组，形状: {mask_image.shape}")
                 mask_image = Image.fromarray(mask_image)
             elif not isinstance(mask_image, Image.Image):
-                error_msg = "Error: Mask image must be numpy array or PIL.Image format"
-                print(f"错误: {error_msg}")
-                return error_msg
-            print(f"掩码图像处理完成，尺寸: {mask_image.size}")
+                return "Error: Mask image must be numpy array or PIL.Image format"
 
-        print("创建随机种子生成器...")
         # 使用设定的seed
         seed_generator = torch.Generator(device=generator.device).manual_seed(int(seed))
-        
-        print("调用图像生成器...")
         # 使用ImageGenerator生成图像
         generated_image = generator.generate(main_image, mask_image, texts_str, prompt, seed_generator)
-        
-        print(f"生成器返回结果类型: {type(generated_image)}")
-        
-        # 检查返回的结果类型
-        if isinstance(generated_image, str):
-            print(f"错误: 生成过程返回错误信息: {generated_image}")
-            return generated_image
-        elif isinstance(generated_image, Image.Image):
-            print(f"成功: 成功生成图像，尺寸: {generated_image.size}，模式: {generated_image.mode}")
-            return generated_image
-        elif isinstance(generated_image, np.ndarray):
-            print(f"成功: 成功生成图像，numpy数组形状: {generated_image.shape}")
-            return generated_image
-        else:
-            error_msg = f"Error: Unexpected return type from generator: {type(generated_image)}"
-            print(f"错误: {error_msg}")
-            return error_msg
-            
+        return generated_image
     except Exception as e:
-        error_msg = f"Error: {str(e)}"
-        print(f"异常: 生成过程中发生异常: {error_msg}")
-        import traceback
-        print(f"堆栈跟踪: {traceback.format_exc()}")
-        return error_msg
+        return f"Error: {str(e)}"
 
 # For debugging
 # def generate_image(main_image, mask_image, texts_str, prompt, seed):
@@ -739,7 +480,7 @@ with gr.Blocks() as iface:
             maximum=10000,
             step=1,  # 步长为1，确保是整数
             value=42,
-            scale=1,
+            scale=0.3,
         )
     
     gr.Markdown("""
@@ -869,26 +610,6 @@ with gr.Blocks() as iface:
         inputs=[texts_input, prompt_input, main_image_input, mask_image_input, seed_input]
     )
 
-    # 包装generate_image函数，添加更好的错误处理和日志
-    def generate_image_with_logging(main_image, mask_image, texts_str, prompt, seed):
-        print("\n" + "="*50)
-        print("图像生成流程启动")
-        print("="*50)
-        
-        result = generate_image(main_image, mask_image, texts_str, prompt, seed)
-        
-        print(f"生成结果类型: {type(result)}")
-        if isinstance(result, str):
-            print(f"最终错误: {result}")
-        else:
-            print("图像生成流程完成")
-        
-        print("="*50)
-        print("图像生成流程结束")
-        print("="*50 + "\n")
-        
-        return result
-
     # 设置按钮事件
     visualize_btn.click(
         fn=visualize_layout,
@@ -897,7 +618,7 @@ with gr.Blocks() as iface:
     )
     
     generate_btn.click(
-        fn=generate_image_with_logging,
+        fn=generate_image,
         inputs=[main_image_input, mask_image_input, texts_input, prompt_input, seed_input],
         outputs=generated_output
     )
@@ -914,4 +635,3 @@ with gr.Blocks() as iface:
 # 启动应用
 if __name__ == "__main__":
     iface.launch(server_name="0.0.0.0",server_port=7861)
-

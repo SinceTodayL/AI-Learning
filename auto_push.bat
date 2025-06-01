@@ -1,27 +1,38 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: ======== Auto Push Script for https://github.com/SinceTodayL/AI-Learning ========
+:: 设置最大文件大小（单位为字节）100MB = 104857600
+set "MAX_SIZE=104857600"
 
-:: Change to local repo directory
+:: 切换到本地仓库目录
 cd /d "E:\AI Learning"
 
-:: Stage all changes
+:: 添加所有更改
 git add .
 
-:: Check if there are any staged changes
+:: 检查是否有超过 100MB 的暂存文件
+for /f "tokens=*" %%f in ('git diff --cached --name-only') do (
+    for %%A in ("%%f") do (
+        set "FILESIZE=%%~zA"
+        if !FILESIZE! gtr %MAX_SIZE% (
+            echo [×] 文件 "%%f" 的大小为 !FILESIZE! 字节，已超过 100MB 限制！
+            echo [！] 请移除该文件或使用 Git LFS。
+            git reset "%%f"
+            goto :end
+        )
+    )
+)
+
+:: 检查是否有暂存更改
 git diff --cached --quiet
 if errorlevel 1 (
-    :: Get current date in yyyyMMdd format
     for /f %%i in ('powershell -command "Get-Date -Format \"yyyyMMdd\""') do set timestamp=%%i
-
-    :: Commit with timestamp
     git commit -m "update at !timestamp!"
-    
-    echo [✓] Changes detected. Committed and pushed to main at !timestamp!.
+    git push origin main
+    echo [✓] 提交成功并已推送到 main 分支（时间：!timestamp!）。
 ) else (
-    echo [–] No changes detected. Nothing to commit.
+    echo [–] 没有变更内容，未提交。
 )
-:: Push to main branch
-git push origin main
-pause()
+
+:end
+pause

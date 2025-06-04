@@ -316,6 +316,24 @@ $$
 
 
 
+20250602
+
+CLIP 模型，原本是 HCI 的第三次作业，做一个图像检索，但是后来发现，这不就是之前看到的衡量 Text2Image 的一个指标吗，而且 sd 里面也经常用
+
+核心原理就是
+
+![CLIP](./images/CLIP.png)
+
+如上图所示，
+
+一个 TextEncoder,  实际上是一个标准的 Transformer 网络，经过分词之后，映射到一个固定维度的向量 （可以是512之类的），然后进行注意力机制的运算，最后，取最后一个分词对应的向量，作为整个句子的代表向量（因为经过 Transformer 网络的学习，这个向量已经学习到了这个句子的上下文含义，可以代表这个句子）；CLIP 模型其实就是将这个输入的 text 放到一个 预训练好的 Transformer 模型中，然后输出这个 Encode 之后的向量；
+
+一个 ImageEncoder，实际上也是一个加了ResNet的Transformer，但实际上里面的结构也都会很灵活，不能一概而论
+
+在 sd 中，常被用来作为衡量文生图质量的一种手段，以及sd中将文本转换为向量的时候，也会经常用
+
+
+
 
 
 ### Adam (paper: Adam: A Method For Stochastic Optimization)

@@ -334,6 +334,42 @@ CLIP 模型，原本是 HCI 的第三次作业，做一个图像检索，但是�
 
 
 
+20250606
+
+Diffusion Model 的具体过程：
+
+首先是加噪声，对于原图片向量，利用：
+$$
+q(x_t \mid x_{t-1}) = \mathcal{N}(x_t; \sqrt{1 - \beta_t} \cdot x_{t-1}, \beta_t \cdot \mathbf{I})
+$$
+这样一个递推公式，给原始图片向量加上噪声，或者可以一步写成：
+$$
+x_t = \sqrt{\bar{\alpha}_t} \cdot x_0 + \sqrt{1 - \bar{\alpha}_t} \cdot \epsilon, \quad \epsilon \sim \mathcal{N}(0, \mathbf{I})
+\\
+\alpha_t = 1 - \beta_t, \quad \bar{\alpha}_t = \prod_{s=1}^{t} \alpha_s
+$$
+然后再去去噪（解码），训练一个函数
+$$
+p_\theta(x_{t-1} \mid x_t) = \mathcal{N}(x_{t-1}; \mu_\theta(x_t, t), \Sigma_\theta(x_t, t))
+$$
+通过预测噪声来解码出原图
+$$
+\hat{x}_0 = \frac{1}{\sqrt{\bar{\alpha}_t}} \left( x_t - \sqrt{1 - \bar{\alpha}_t} \cdot \hat{\epsilon}_\theta(x_t, t) \right)
+$$
+损失函数为：
+$$
+\mathcal{L}_{\text{simple}} = \mathbb{E}_{x_0, \epsilon, t} \left[ \left\| \epsilon - \epsilon_\theta\left( \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \cdot \epsilon, t \right) \right\|^2 \right]
+$$
+
+
+
+
+
+
+
+
+
+
 
 
 ### Adam (paper: Adam: A Method For Stochastic Optimization)

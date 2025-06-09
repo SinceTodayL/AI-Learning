@@ -102,15 +102,17 @@ conda activate normal # 激活 normal 虚拟环境
 
 
 
-2025 0415
+#### 20250415
 
 重新看了一遍3B1B的视频，看来我以前对 Attention 这个东西的认知是有问题的， Attention 模块不会对输入序列做一个扩充，实际上是根据每一个时间点数据之间的相关性，不断更新内部数据，以 GPT3 为例，对于一个已经预训练好的词嵌入表，不能简单地通过将tokens和词表中的元素一一对应，而是要通过 Attention 模块，==不断通过词与词之间的联系 （$QK^T$），更新词的内涵（向量点积），从而让每一个词都具有上下文信息！==然后，接下来一个输出的tokens就完全依赖于最后一个序列数据，根据其输出一个概率分布
 
 至于 transformer 层中的 MLP 层，其参数量甚至是要多于 Attention层中 $Q,K,V$的参数量的（GPT3），MLP 层是实现维度之间交流的关键，同时也是提高非线性表达能力的关键（ReLU）。换句话说，MLP 是大模型中与训练后存储信息的关键
 
+Transformer 的 `Encoder` 层是没有掩码的，这个 Encoder 适用于理解文本含义，但是 `Decoder` 会有掩码，根据前面 Encoder 的结果生成
+
  
 
-20250416
+#### 20250416
 
 1*1 卷积核也是可行的，并不是无意义的
 
@@ -120,13 +122,13 @@ conda activate normal # 激活 normal 虚拟环境
 
 
 
-20250419
+#### 20250419
 
 多层神经网络中，如果变换全部都是线性的，那么和单独一层变换其实没有本质区别，只有在其中添加激活函数，引入非线性，才能提高神经网络的表达能力
 
 
 
-20250511
+#### 20250511
 
 学习Python的函数的时候，和C++是不一样的，C++的很多语法规则固定且很少，因此有些需要掌握全面，但是Python非常灵活，记函数大可不必，但是要知道函数是用来做什么的，==需要哪些参数==，这个很重要
 
@@ -181,7 +183,7 @@ torch 框架训练过程经典代码：
 
 
 
-20250518
+#### 20250518
 
 ==KL散度==
 $$
@@ -197,7 +199,7 @@ KL 散度（Kullback-Leibler Divergence）是衡量两个概率分布之间差�
 
 
 
-20250519
+#### 20250519
 
 利用Pytorch时，继承`nn.Module` 类的优点：
 
@@ -210,13 +212,13 @@ KL 散度（Kullback-Leibler Divergence）是衡量两个概率分布之间差�
 
 
 
-20250522
+#### 20250522
 
 简单读了几篇关于文字生成、古籍文字识别的文章，基于GAN的改进，或者通过捕捉文字局部特征进行识别、或者进行图像的检索
 
 
 
-20250525
+#### 20250525
 
 下图描述了如 Stable Diffusion、DALL-E、Imagen 等图像生成模型的固有组件
 
@@ -236,7 +238,7 @@ KL 散度（Kullback-Leibler Divergence）是衡量两个概率分布之间差�
 
 
 
-20250526
+#### 20250526
 
 VAE 和 Diffusion 的区别
 
@@ -246,7 +248,7 @@ VAE 和 Diffusion 的区别
 
 
 
-20250527
+#### 20250527
 
 >[!NOTE]
 
@@ -316,7 +318,7 @@ $$
 
 
 
-20250602
+#### 20250602
 
 CLIP 模型，原本是 HCI 的第三次作业，做一个图像检索，但是后来发现，这不就是之前看到的衡量 Text2Image 的一个指标吗，而且 sd 里面也经常用
 
@@ -334,13 +336,13 @@ CLIP 模型，原本是 HCI 的第三次作业，做一个图像检索，但是�
 
 
 
-20250606
+#### 20250606
 
 Diffusion Model 的具体过程：
 
 首先是加噪声，对于原图片向量，利用：
 $$
-q(x_t \mid x_{t-1}) = \mathcal{N}(x_t; \sqrt{1 - \beta_t} \cdot x_{t-1}, \beta_t \cdot \mathbf{I})
+q(x_t \mid x_{t-1}) = \mathcal{N}(x_t; \sqrt{1 - \beta_t} \cdot x_{t-1}, \beta_t \cdot \mathbf{I})
 $$
 这样一个递推公式，给原始图片向量加上噪声，或者可以一步写成：
 $$
@@ -350,23 +352,44 @@ x_t = \sqrt{\bar{\alpha}_t} \cdot x_0 + \sqrt{1 - \bar{\alpha}_t} \cdot \epsilon
 $$
 然后再去去噪（解码），训练一个函数
 $$
-p_\theta(x_{t-1} \mid x_t) = \mathcal{N}(x_{t-1}; \mu_\theta(x_t, t), \Sigma_\theta(x_t, t))
+p_\theta(x_{t-1} \mid x_t) = \mathcal{N}(x_{t-1}; \mu_\theta(x_t, t), \Sigma_\theta(x_t, t))
 $$
 通过预测噪声来解码出原图
 $$
-\hat{x}_0 = \frac{1}{\sqrt{\bar{\alpha}_t}} \left( x_t - \sqrt{1 - \bar{\alpha}_t} \cdot \hat{\epsilon}_\theta(x_t, t) \right)
+\hat{x}_0 = \frac{1}{\sqrt{\bar{\alpha}_t}} \left( x_t - \sqrt{1 - \bar{\alpha}_t} \cdot \hat{\epsilon}_\theta(x_t, t) \right)
 $$
 损失函数为：
 $$
-\mathcal{L}_{\text{simple}} = \mathbb{E}_{x_0, \epsilon, t} \left[ \left\| \epsilon - \epsilon_\theta\left( \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \cdot \epsilon, t \right) \right\|^2 \right]
+\mathcal{L}_{\text{simple}} = \mathbb{E}_{x_0, \epsilon, t} \left[ \left\| \epsilon - \epsilon_\theta\left( \sqrt{\bar{\alpha}_t} x_0 + \sqrt{1 - \bar{\alpha}_t} \cdot \epsilon, t \right) \right\|^2 \right]
 $$
+这个损失函数中，$\epsilon$ 是一个遵循高斯分布的随机变量，也就是之前加上去的噪声， $\epsilon_\theta$ 是一个带有参数的、训练过的预测网络，即 UNet，通过二者之间的L2误差，来优化模型
 
 
 
+>CLIP 在 sd 中有什么作用？
 
+从 sd 输入 text 开始，我们首先用一个预训练好的 CLIP 模型，将 text 转换为向量表达，然后输入 UNet
 
+在 UNet 去噪过程中，会不断用 `CrossAttention` 机制来让==生成的图片和 text 尽量接近==（让图片latent向量和文字向量作 Cross Attention），这也是为什么用 CLIP，而不是 BERT，因为 CLIP 很好的做到了文字和图像的跨模态
 
+![image-20250606221055676](./images/image-20250606221055676.png)
 
+上面的 Conditioning 就是通过 Cross Attention 实现的
+
+==MM-DiT==
+
+但是 CLIP 提供的是一个静态的语义对齐，无法做到动态的、更加细粒化的建模
+
+如何解决？引入 MM-DiT，文本和图像分开作 Attention，独立参数，再 cross attention
+
+目前我理解的 sd 的训练流程：
+
+* 输入文本，文本用 CLIP 编码，然后文本自己再 selfattention；输入图像，图像利用 VAE 或其他压到 latent vector
+* 随机取一个时间步，给图像加噪；
+* 进入 MMDiT（Cross Attention）
+* 然后计算LDM，更新参数
+
+生成图片过程就是从上面的第二步开始的，然后没有标准答案可以更新
 
 
 

@@ -5,7 +5,7 @@ import numpy as np
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device)
-image = preprocess(Image.open('dog2.jpg')).unsqueeze(0).to(device)
+image = preprocess(Image.open('dog1.jpg')).unsqueeze(0).to(device)
 
 texts = ["a big white dog", "a small orange dog", "a white cat", "an ugly cat"]
 texts_tokens = clip.tokenize(texts).to(device)
@@ -13,8 +13,10 @@ texts_tokens = clip.tokenize(texts).to(device)
 with torch.no_grad():
     image_feature = model.encode_image(image)
     print(image_feature.shape)
+    print(image_feature)
     text_feature = model.encode_text(texts_tokens)
     print(text_feature.shape)
+    print(text_feature)
 
 image_feature /= image_feature.norm(dim=-1, keepdim=True)
 text_feature /= text_feature.norm(dim=-1, keepdim=True)

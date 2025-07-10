@@ -107,6 +107,51 @@ Attention 中的 q,k 矩阵，在代码中是一个4维的 `torch.Tensor` 向量
 
 
 
+有关转换 json 格式的函数：
+
+```Python
+import json
+texts_str = '''
+[
+  {"id": 1, "text": "hello"},
+  {"id": 2, "text": "world"}
+]
+'''
+texts = json.loads(texts_str)   # list[dict]
+for item in texts:
+    print(item["id"], item["text"])
+```
+
+* [] 代表的是列表 (数组)
+
+* {} 代表的是 `dict`
+
+
+
+```Python
+prompt_embeds = prompt_embeds.repeat(1, num_images_per_prompt, 1)
+```
+
+对于torch 向量的 `repeat` 方法：传递参数的数量等于 该向量的维数，数值代表沿该维度重复多少次
+
+如：
+
+```Python
+x = torch.tensor([[1, 2],
+                  [3, 4]])
+
+print(x.repeat(2, 3))
+# Output:
+tensor([[1, 2, 1, 2, 1, 2],
+        [3, 4, 3, 4, 3, 4],
+        [1, 2, 1, 2, 1, 2],
+        [3, 4, 3, 4, 3, 4]])
+```
+
+
+
+
+
 
 
 ### Knowledge
@@ -430,8 +475,7 @@ InceptionV3 是Google的一个预训练的图像分类神经网络 （针对 Ima
 
 计算 FID 的公式：
 $$
-
-\text{FID} = \left\| \mu_r - \mu_g \right\|^2 + \operatorname{Tr} \left( \Sigma_r + \Sigma_g - 2 \left( \Sigma_r \Sigma_g \right)^{1/2} \right)
+\text{FID} = \left\| \mu_r - \mu_g \right\|^2 + \operatorname{Tr} \left( \Sigma_r + \Sigma_g - 2 \left( \Sigma_r \Sigma_g \right)^{1/2} \right)
 $$
 其中：
 
@@ -455,7 +499,113 @@ $\Sigma_g$：生成图像特征的协方差矩阵
 
 
 
-今天在 **《High-Resolution Image Synthesis with Latent Diffusion Models》** 这篇文章中，FID 用 Inception 特征衡量重建图与原图的语义差距
+另外，还有一个指标， **PSNR** ( 峰值信噪比 )，计算像素级别的差值，衡量图像的重建质量
+$$
+\text{PSNR} = 10 \cdot \log_{10} \left( \frac{{\text{MAX}^2}}{\text{MSE}} \right)
+$$
+其中，MAX 为图像中像素的最大值（一般为 255）；
+$$
+\text{MSE} = \frac{1}{HWC} \sum_{i=1}^{H} \sum_{j=1}^{W} \sum_{k=1}^{C} \left( x_{ijk} - \hat{x}_{ijk} \right)^2
+$$
+H，W，C 分别是图像的高、宽、通道数
+
+无需像 FID 一样计算特征向量，但是只能衡量底层的相似度，而 FID 可以衡量 感知/语义 质量
+
+
+
+今天在 **《High-Resolution Image Synthesis with Latent Diffusion Models》** 这篇文章中，FID 用 Inception 特征衡量重建图与原图的语义差距，PSNR 用于衡量相似度
+
+
+
+#### 20250705
+
+<img src="./assets/image-20250705123506871.png" alt="image-20250705123506871" style="zoom: 80%;" />
+
+Stable Diffusion 中，LDM 是核心改变，其中，LDM 做出的压缩是语义级的压缩，不是像素级的压缩，即：LDM压缩的是图像表达的意义，并在生成时通过 Powerful 模型还原细节 
+
+上图可以看出，横轴向左移动时，比特率下降，信息被压缩，导致 RMSE 很大（重构误差），但是在语义上仍然正确、信息被保留，对应 LDM；
+
+而图中右下方，虽然保留了足够的信息，图像保持感知质量，但是编码有冗余
+
+感知压缩更适合于保留细节，保留的是人眼可见的视觉细节，适合 reconstruction;
+
+语义压缩更适合生成，保留的是图片表达的概念和意义，不在意原图细节，即 LDM
+
+
+
+#### 20250706
+
+jpg 格式和 png 格式的区别：
+
+* jpg 是有损压缩，存储更小，但是容易有“锯齿状”边缘；不支持透明背景
+* png 是无损压缩，支持透明背景，可以让彩色的边缘和背景做更好的融合，从而消除锯齿状边缘
+
+PIL 库，全程 `Python Image Libaray`，用于简单操作一张图片，包括查看大小形状、分离通道、旋转
+
+
+
+RGB：Red，Green，Blue
+
+RGBA：多一个 Alpha，透明度，也就是说，RGBA 格式不支持 jpg；RGBA 格式可以自然融入背景，但是 RGB 格式始终是一块白色底布
+
+
+
+#### 20250710
+
+<img src="./assets/image-20250710214542235.png" alt="image-20250710214542235" style="zoom:50%;" />
+
+
+
+sd3 模型中的 Tokenizer 和 Encoder，都是用于转换 `prompt` 的：
+
+在 `pipeline_sd3.py` 中，`_get_clip_prompt_embeds` 函数接受 prompt，转化为向量：
+
+先通过 tokenizer：
+
+```Python
+text_inputs = tokenizer(
+        prompt,
+        padding="max_length",
+        max_length=self.tokenizer_max_length,
+        truncation=True,
+        return_tensors="pt",
+    )
+text_input_ids = text_inputs.input_ids
+```
+
+然后再通过 encoder：
+
+```Python
+pompt_embeds = text_encoder(
+     text_input_ids.to(device), output_hidden_states=True
+)
+```
+
+实际上 tokenizer 就是一个映射表，将一个句子转化为此表中的索引 (token ID)
+
+然后再由 Encoder 模块编码，这个模块包含了：
+
+* 词嵌入，将每一个 token ID 映射为一个向量
+* 加上位置编码（为后面的 Transformer 模块做准备）
+* 经过 Self-Attention 模块，同时还有 LayerNorm，残差连接，FFN 
+* 输出结果
+
+
+
+
+
+同时，模型中还会返回 `pooled_prompt_embed` 这种池化后的结果，因为有时候我们不需要整个句子的完整向量，而是一个句子的完整表示，即整个 `prompt` 的语义向量
+
+常见池化方式：
+
+| 方法                   | 说明                                   | 举例              |
+| ---------------------- | -------------------------------------- | ----------------- |
+| **CLS pooling**        | 取第一个 token（通常是 `[CLS]`）的向量 | `x[:, 0, :]`      |
+| **Mean pooling**       | 对所有有效 token 向量取平均            | `x.mean(dim=1)`   |
+| **Max pooling**        | 每个维度上取最大值                     | `x.max(dim=1)`    |
+| **Projection pooling** | 通过一个线性层投影句子                 | CLIP 使用此方式！ |
+
+
 
 
 

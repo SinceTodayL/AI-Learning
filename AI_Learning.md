@@ -150,6 +150,20 @@ tensor([[1, 2, 1, 2, 1, 2],
 
 
 
+`torch.cat` 适用于沿某一个维度拼接两个向量，要求这两个向量除了拼接维度之外其他维度的形状必须相同
+
+```
+clip_prompt_embeds = torch.cat([prompt_embed, prompt_2_embed], dim=-1)
+```
+
+这是 sd3 模型中，将两个词嵌入后的向量进行拼接，两个向量的 shape 都是 `(batch_size, seq_len, emb_len)` , `dim = -1` 代表沿最后一个维度拼接下·
+
+
+
+
+
+
+
 
 
 

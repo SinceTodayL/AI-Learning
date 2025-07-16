@@ -606,8 +606,6 @@ pompt_embeds = text_encoder(
 
 
 
-
-
 同时，模型中还会返回 `pooled_prompt_embed` 这种池化后的结果，因为有时候我们不需要整个句子的完整向量，而是一个句子的完整表示，即整个 `prompt` 的语义向量
 
 常见池化方式：

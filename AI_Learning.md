@@ -128,6 +128,24 @@ for item in texts:
 
 
 
+参数注解：
+
+```python
+from typing import Union, Optional 
+```
+
+在函数的参数中这样写：
+
+```python
+negative_prompt: Optional[Union[str, List[str]]] = None
+```
+
+Union[X,Y] 代表 X，Y 都被接受，Optional[X, Y] 代表X，Y类型都被接受，同时接受 None
+
+
+
+
+
 ```Python
 prompt_embeds = prompt_embeds.repeat(1, num_images_per_prompt, 1)
 ```
@@ -157,6 +175,39 @@ clip_prompt_embeds = torch.cat([prompt_embed, prompt_2_embed], dim=-1)
 ```
 
 这是 sd3 模型中，将两个词嵌入后的向量进行拼接，两个向量的 shape 都是 `(batch_size, seq_len, emb_len)` , `dim = -1` 代表沿最后一个维度拼接下·
+
+
+
+`torchvision.transforms` 模块中有 `Compose` 函数，可用于预处理图像数据
+
+```python
+image_transforms = transforms.Compose([
+    transforms.Resize((512, 512)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.5], [0.5])
+])
+```
+
+先将图片缩放到 $512 \times 512$ ，然后转换成 `tensor` 张量，然后归一化到 $[-1,1]$ 的区间中，即 
+$$
+normal\_pixel = \frac{pixel-0.5}{0.5}
+$$
+这里是单通道图像的写法，如果 RGB 彩色图像，就是
+
+```python
+transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+```
+
+Compose 实际上是一个函数链的写法：
+
+```python
+transforms.Compose([A, B, C])
+# 等价于
+def composed(x):
+    return C(B(A(x)))
+```
+
+
 
 
 

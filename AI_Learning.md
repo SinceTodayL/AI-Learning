@@ -670,6 +670,12 @@ pompt_embeds = text_encoder(
 
 
 
+20250804
+
+什么叫高频细节？
+
+`encoder_hidden_states` 就是ControlNet 中的控制信息
+
 
 
 
